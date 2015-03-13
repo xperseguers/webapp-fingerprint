@@ -2,7 +2,7 @@
 class t3detect {
 
 	const minTYPO3 = '3.6.1';
-	const maxTYPO3 = '6.2.4';
+	const maxTYPO3 = '7.1.0';
 
 	protected static $versionsTested = array();
 

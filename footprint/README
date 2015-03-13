@@ -1,0 +1,4 @@
+Usage:
+
+./get_files.sh > files.txt
+php create_footprint.php > footprint.data.php
