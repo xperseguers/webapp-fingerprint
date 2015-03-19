@@ -57,11 +57,11 @@ BASH;
 	foreach ($files as $file) {
 		$footprint[$file] = array();
 		foreach ($releases as $release) {
-			$data = getRevisionMd5($base_dir . $version . '/' . $file);
+			$data = getRevisionMd5(TEMP_DIRECTORY . '/git-repo/' . $file);
 			foreach ($data as $key) {
 				if ($key != -1) {
 					if (!isset($footprint[$file][$key])) $footprint[$file][$key] = array();
-					$footprint[$file][$key][] = $version;
+					$footprint[$file][$key][] = $release;
 				}
 			}
 		}
