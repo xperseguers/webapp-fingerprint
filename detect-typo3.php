@@ -161,7 +161,7 @@ class t3detect {
 	}
 }
 
-$website = trim($_GET['website']);
+$website = isset($_GET['website']) ? trim($_GET['website']) : '';
 $ratio = isset($_GET['ratio']) ? min(10, max(1, intval($_GET['ratio']))) : 1;
 if (!preg_match('#^(http://|https://)#', $website)) {
 	$website = '';
