@@ -37,6 +37,7 @@ class t3detect {
 
 		$keys = array_rand($footprint, floor($ratio / 100 * count($footprint)));
 		$tmp = array();
+
 		foreach ($keys as $key) $tmp[$key] = $footprint[$key];
 		$footprint = $tmp;
 
@@ -55,16 +56,36 @@ class t3detect {
 			}
 		}
 
-		// Aggregate version with occurence
-		$aggregate = array();
-		foreach ($guess as $version => $occurences) {
-			if (!isset($aggregate[$occurences])) {
-				$aggregate[$occurences] = array();
+		// Search for the highest branch found
+		$highestBranch = '0.0';
+		$versions = array_keys($guess);
+		foreach ($versions as $version) {
+			$versionParts = explode('.', $version);
+			$branch = $versionParts[0] . '.' . $versionParts[1];
+			if (version_compare($branch, $highestBranch, '>')) {
+				$highestBranch = $branch;
 			}
-			$aggregate[$occurences][] = $version;
 		}
 
-		// Sort by occurences (take the highest)
+		// Keep only versions related to the highest branch
+		$tmp = array();
+		foreach ($guess as $version => $occurrences) {
+			if (self::isFirstPartOfStr($version, $highestBranch . '.')) {
+				$tmp[$version] = $occurrences;
+			}
+		}
+		$guess = $tmp;
+
+		// Aggregate version with occurrence
+		$aggregate = array();
+		foreach ($guess as $version => $occurrences) {
+			if (!isset($aggregate[$occurrences])) {
+				$aggregate[$occurrences] = array();
+			}
+			$aggregate[$occurrences][] = $version;
+		}
+
+		// Sort by occurrences (take the highest)
 		krsort($aggregate);
 		$versions = array_shift($aggregate);
 		return implode(' / ', $versions);
@@ -206,7 +227,7 @@ if ($website) {
 <?php
 if ($isTYPO3) {
 		if ($version) {
-			echo '<p>Website is running TYPO3 ' . $version . '</p>';
+			echo '<p>Website seems to be running TYPO3 ' . $version . '</p>';
 		} else {
 			echo '<p>Unknown version of TYPO3</p>';
 		}
