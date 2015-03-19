@@ -32,6 +32,7 @@ class t3detect {
 	}
 
 	protected static function guessVersion($website, $ratio) {
+		$footprint = array();
 		require_once(dirname(__FILE__) . '/footprint/footprint.data.php');
 
 		$keys = array_rand($footprint, floor($ratio / 100 * count($footprint)));
