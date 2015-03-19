@@ -1,11 +1,6 @@
 <?php
 class t3detect {
 
-	const minTYPO3 = '3.6.1';
-	const maxTYPO3 = '7.1.0';
-
-	protected static $versionsTested = array();
-
 	public static function getVersion($website, $ratio) {
 		// Ensure a trailing slash is present
 		$website = rtrim($website, '/') . '/';
@@ -32,8 +27,8 @@ class t3detect {
 	}
 
 	protected static function guessVersion($website, $ratio) {
-		$footprint = array();
-		require_once(dirname(__FILE__) . '/footprint/footprint.data.php');
+		$json = file_get_contents(dirname(__FILE__) . '/footprint/footprint.data.json');
+		$footprint = json_decode($json, TRUE);
 
 		$keys = array_rand($footprint, floor($ratio / 100 * count($footprint)));
 		$tmp = array();
