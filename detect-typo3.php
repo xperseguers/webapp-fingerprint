@@ -52,21 +52,24 @@ class t3detect {
 		}
 
 		// Search for the highest branch found
-		$highestBranch = '0.0';
-		$versions = array_keys($guess);
-		foreach ($versions as $version) {
-			$versionParts = explode('.', $version);
-			$branch = $versionParts[0] . '.' . $versionParts[1];
-			if (version_compare($branch, $highestBranch, '>')) {
-				$highestBranch = $branch;
-			}
-		}
-
-		// Keep only versions related to the highest branch
+		// and keep only versions related to the highest branch
 		$tmp = array();
-		foreach ($guess as $version => $occurrences) {
-			if (self::isFirstPartOfStr($version, $highestBranch . '.')) {
-				$tmp[$version] = $occurrences;
+		$versions = array_keys($guess);
+		if (in_array('master', $versions)) {
+			$tmp['master'] = $guess['master'];
+		} else {
+			$highestBranch = '0.0';
+			foreach ($versions as $version) {
+				$versionParts = explode('.', $version);
+				$branch = $versionParts[0] . '.' . $versionParts[1];
+				if (version_compare($branch, $highestBranch, '>')) {
+					$highestBranch = $branch;
+				}
+			}
+			foreach ($guess as $version => $occurrences) {
+				if (self::isFirstPartOfStr($version, $highestBranch . '.')) {
+					$tmp[$version] = $occurrences;
+				}
 			}
 		}
 		$guess = $tmp;
@@ -78,6 +81,10 @@ class t3detect {
 				$aggregate[$occurrences] = array();
 			}
 			$aggregate[$occurrences][] = $version;
+		}
+
+		if (empty($aggregate) && $ratio < 20) {
+			return self::guessVersion($website, $ratio + 5);
 		}
 
 		// Sort by occurrences (take the highest)
@@ -181,7 +188,7 @@ class t3detect {
 }
 
 $website = isset($_GET['website']) ? trim($_GET['website']) : '';
-$ratio = isset($_GET['ratio']) ? min(10, max(1, intval($_GET['ratio']))) : 1;
+$ratio = isset($_GET['ratio']) ? min(20, max(1, intval($_GET['ratio']))) : 1;
 if (!preg_match('#^(http://|https://)#', $website)) {
 	$website = '';
 }
@@ -191,7 +198,7 @@ $version = '';
 if ($website) {
 	$isTYPO3 = t3detect::isTYPO3($website);
 	if ($isTYPO3) {
-		$version = t3detect::getVersion($website, $ratio * 10);
+		$version = t3detect::getVersion($website, $ratio * 5);
 	}
 } else {
 	$website = 'http://';
@@ -208,8 +215,8 @@ if ($website) {
 	<label for="ratio">Ratio:</label>
 	<select id="ratio" name="ratio">
 <?php
-	for ($i = 1; $i <= 10; $i++) {
-		echo '<option value="' . $i . '"' . ($i == $ratio ? ' selected="selected"' : '') . '>' . ($i *10) . '%</option>';
+	for ($i = 1; $i <= 20; $i++) {
+		echo '<option value="' . $i . '"' . ($i == $ratio ? ' selected="selected"' : '') . '>' . ($i * 5) . '%</option>';
 	}
 ?>
 	</select>

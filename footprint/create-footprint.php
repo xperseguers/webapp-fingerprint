@@ -10,12 +10,17 @@ $releases = array();
 foreach ($data as $branch => $info) {
 	if (!is_array($info['releases'])) continue;
 	foreach ($info['releases'] as $release => $_) {
+		if (!preg_match('/^\\d+\\.\\d+\\.\\d+$/', $release)) {
+			// Skip intermediate TYPO3 version
+			continue;
+		}
 		$releases[] = $release;
 	}
 }
 
 // Ensure we start with older versions first
 sort($releases);
+$releases[] = 'master';
 
 echo 'Cloning TYPO3 Git repository into ' . TEMP_DIRECTORY . "\n";
 exec('rm -rf ' . TEMP_DIRECTORY);
@@ -28,14 +33,10 @@ $files = array();
 $footprint = array();
 
 foreach ($releases as $release) {
-	if (!preg_match('/^\\d+\\.\\d+\\.\\d+$/', $release)) {
-		echo 'Skipping intermediate TYPO3 version ' . $release . "\n";
-		continue;
-	}
-
 	$output = array();
 	$ret = 0;
-	exec('git checkout TYPO3_' . str_replace('.', '-', $release), $output, $ret);
+	$tag = $release !== 'master' ? 'TYPO3_' . str_replace('.', '-', $release) : 'master';
+	exec('git checkout ' . $tag, $output, $ret);
 	if ($ret != 0) continue;
 
 	echo 'Looking for additional interesting files for TYPO3 version ' . $release . "\n";
@@ -47,22 +48,20 @@ done
 BASH;
 	exec($command);
 	$allFiles = explode("\n", trim(file_get_contents($tempFiles)));
-	$newFiles = array_diff($allFiles, $files);
+	$newFiles = array_values(array_diff($allFiles, $files));
 	if (count($newFiles) > 0) {
 		echo 'New files found: '; print_r($newFiles); echo "\n";
 	}
 	$files = array_merge($files, $newFiles);
 
 	echo 'Computing checksums for TYPO3 version ' . $release . ' ... ';
-	foreach ($files as $file) {
-		$footprint[$file] = array();
-		foreach ($releases as $release) {
-			$data = getRevisionMd5(TEMP_DIRECTORY . '/git-repo/' . $file);
-			foreach ($data as $key) {
-				if ($key != -1) {
-					if (!isset($footprint[$file][$key])) $footprint[$file][$key] = array();
-					$footprint[$file][$key][] = $release;
-				}
+	foreach ($allFiles as $file) {
+		if (!is_array($footprint[$file])) $footprint[$file] = array();
+		$data = getRevisionMd5(TEMP_DIRECTORY . '/git-repo/' . $file);
+		foreach ($data as $key) {
+			if ($key != -1) {
+				if (!isset($footprint[$file][$key])) $footprint[$file][$key] = array();
+				$footprint[$file][$key][] = $release;
 			}
 		}
 	}
