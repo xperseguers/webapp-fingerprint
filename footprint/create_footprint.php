@@ -1,69 +1,75 @@
 <?php
-$files = explode("\n", file_get_contents('files.txt'));
+const JSON_URL = 'http://get.typo3.org/json';
+const GIT_REPOSITORY = 'git://git.typo3.org/Packages/TYPO3.CMS.git';
+const TEMP_DIRECTORY = '/tmp/typo3-sources';
 
-$versions = array(
-	'3.6.1', '3.6.2',
-	'3.7.0', '3.7.1',
-	'3.8.0',
-	'4.0.0', '4.0.1', '4.0.2', '4.0.3', '4.0.4', '4.0.5',
-	'4.0.6', '4.0.7', '4.0.8', '4.0.9', '4.0.10', '4.0.11',
-	'4.0.12', '4.0.13',
-	'4.1.0', '4.1.1', '4.1.2', '4.1.3', '4.1.4', '4.1.5',
-	'4.1.6', '4.1.7', '4.1.8', '4.1.9', '4.1.10', '4.1.11',
-	'4.1.12', '4.1.13', '4.1.14', '4.1.15',
-	'4.2.0', '4.2.1', '4.2.2', '4.2.3', '4.2.4', '4.2.5',
-	'4.2.6', '4.2.7', '4.2.8', '4.2.9', '4.2.10', '4.2.11',
-	'4.2.12', '4.2.13', '4.2.14', '4.2.15', '4.2.16', '4.2.17',
-	'4.3.0', '4.3.1', '4.3.2', '4.3.3', '4.3.4', '4.3.5',
-	'4.3.6', '4.3.7', '4.3.8', '4.3.9', '4.3.10', '4.3.11',
-	'4.3.12', '4.3.13', '4.3.14',
-	'4.4.0', '4.4.1', '4.4.2', '4.4.3', '4.4.4', '4.4.5',
-	'4.4.6', '4.4.7', '4.4.8', '4.4.9', '4.4.10', '4.4.11',
-	'4.5.0', '4.5.1', '4.5.2', '4.5.3', '4.5.4', '4.5.5',
-	'4.5.6',
-	'4.5.25', '4.5.26', '4.5.27', '4.5.28', '4.5.29', '4.5.30',
-	'4.5.31', '4.5.32', '4.5.33', '4.5.34', '4.5.35', '4.5.36',
-	'4.5.37', '4.5.38', '4.5.39', '4.5.40',
-	'4.6.0', '4.6.1', '4.6.2', '4.6.3', '4.6.4', '4.6.5',
-	'4.6.6', '4.6.6', '4.6.8', '4.6.9', '4.6.10', '4.6.11',
-	'4.6.12', '4.6.13', '4.6.14', '4.6.15', '4.6.16', '4.6.17',
-	'4.6.18',
-	'4.7.0', '4.7.1', '4.7.2', '4.7.3', '4.7.4', '4.7.5',
-	'4.7.6', '4.7.7', '4.7.8', '4.7.9', '4.7.10', '4.7.11',
-	'4.7.12', '4.7.13', '4.7.14', '4.7.15', '4.7.16', '4.7.17',
-	'4.7.18', '4.7.19', '4.7.20',
-	'6.0.0', '6.0.1', '6.0.2', '6.0.3', '6.0.4', '6.0.5',
-	'6.0.6', '6.0.7', '6.0.8', '6.0.9', '6.0.10', '6.0.11',
-	'6.0.12', '6.0.13', '6.0.14',
-	'6.1.0', '6.1.1', '6.1.2', '6.1.3', '6.1.4', '6.1.5',
-	'6.1.6', '6.1.7', '6.1.8', '6.1.9', '6.1.10', '6.1.11',
-	'6.1.12',
-	'6.2.0', '6.2.1', '6.2.2', '6.2.3', '6.2.4', '6.2.5',
-	'6.2.6', '6.2.7', '6.2.8', '6.2.9', '6.2.10',
-	'7.0.0', '7.0.2',
-	'7.1.0',
-);
+$json = file_get_contents(JSON_URL);
+$data = json_decode($json, TRUE);
 
-$base_dir = '/var/www/data/share/typo3_src-';
-
-$footprint = array();
-foreach ($files as $file) {
-	$footprint[$file] = array();
-	foreach ($versions as $version) {
-		$data = getRevisionMd5($base_dir . $version . '/' . $file);
-		foreach ($data as $key) {
-			if ($key != -1) {
-				if (!isset($footprint[$file][$key])) $footprint[$file][$key] = array();
-				$footprint[$file][$key][] = $version;
-			}
-		}
+$releases = array();
+foreach ($data as $branch => $info) {
+	if (!is_array($info['releases'])) continue;
+	foreach ($info['releases'] as $release => $_) {
+		$releases[] = $release;
 	}
 }
 
-echo "<" . "?php\n";
-echo "// Generated on " . date('Y-m-d H:i:s') . "\n";
-echo '$footprint = unserialize(\'' . serialize($footprint) . '\');' . "\n";
-echo "\n?" . ">";
+// Ensure we start with older versions first
+sort($releases);
+
+echo 'Cloning TYPO3 Git repository into ' . TEMP_DIRECTORY . "\n";
+exec('rm -rf ' . TEMP_DIRECTORY);
+mkdir(TEMP_DIRECTORY);
+exec('cd ' . TEMP_DIRECTORY . '; git clone ' . GIT_REPOSITORY . ' git-repo');
+chdir(TEMP_DIRECTORY . '/git-repo');
+
+$tempFiles = TEMP_DIRECTORY . '/files.txt';
+$files = array();
+$footprint = array();
+
+foreach ($releases as $release) {
+	if (!preg_match('/^\\d+\\.\\d+\\.\\d+$/', $release)) {
+		echo 'Skipping intermediate TYPO3 version ' . $release . "\n";
+		continue;
+	}
+
+	$output = array();
+	$ret = 0;
+	exec('git checkout TYPO3_' . str_replace('.', '-', $release), $output, $ret);
+	if ($ret != 0) continue;
+
+	echo 'Looking for additional interesting files for TYPO3 version ' . $release . "\n";
+	$command = <<<BASH
+rm -f $tempFiles && touch $tempFiles
+for EXT in js sql inc txt css yaml rst csv; do
+	find . -type f -iname "*.\$EXT" | grep -v "Tests/" | cut -b3- >> $tempFiles
+done
+BASH;
+	exec($command);
+	$allFiles = explode("\n", trim(file_get_contents($tempFiles)));
+	$newFiles = array_diff($allFiles, $files);
+	if (count($newFiles) > 0) {
+		echo 'New files found: '; print_r($newFiles); echo "\n";
+	}
+	$files = array_merge($files, $newFiles);
+
+	echo 'Computing checksums for TYPO3 version ' . $release . ' ... ';
+	foreach ($files as $file) {
+		$footprint[$file] = array();
+		foreach ($releases as $release) {
+			$data = getRevisionMd5($base_dir . $version . '/' . $file);
+			foreach ($data as $key) {
+				if ($key != -1) {
+					if (!isset($footprint[$file][$key])) $footprint[$file][$key] = array();
+					$footprint[$file][$key][] = $version;
+				}
+			}
+		}
+	}
+	echo "done.\n";
+}
+
+file_put_contents(dirname(__FILE__) . '/footprint.data.json', json_encode($footprint));
 
 function getRevisionMd5($file) {
 	if (!is_file($file)) {
@@ -81,4 +87,3 @@ function getRevisionMd5($file) {
 		// File exists but $Id$ line not found
 	return array('-1', md5($content));
 }
-

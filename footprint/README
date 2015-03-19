@@ -1,4 +1,3 @@
-Usage:
+Usage to recreate the footprint of all versions of TYPO3:
 
-./get_files.sh > files.txt
-php create_footprint.php > footprint.data.php
+    $ php create_footprint.php
