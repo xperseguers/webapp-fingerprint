@@ -25,8 +25,10 @@ class t3detect {
 		// Ensure a trailing slash is present
 		$website = rtrim($website, '/') . '/';
 		return self::http_file_exists($website . 'typo3/index.html')
-			|| self::http_file_exists($website . 'typo3temp/extensions.xml.gz')
-			|| self::http_file_exists($website . 'typo3temp/sprites/zextensions.css');
+			|| self::http_file_exists($website . 'typo3temp/1.mirrors.xml.gz')
+			|| self::http_file_exists($website . 'typo3temp/1.extensions.xml.gz')
+			|| self::http_file_exists($website . 'typo3temp/sprites/zextensions.css')
+			|| self::http_file_exists($website . 'typo3temp/extensions.xml.gz');
 	}
 
 	protected static function guessVersion($website, $ratio) {
