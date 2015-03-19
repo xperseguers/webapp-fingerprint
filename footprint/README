@@ -1,3 +1,4 @@
 Usage to recreate the footprint of all versions of TYPO3:
 
     $ php create-footprint.php
+
