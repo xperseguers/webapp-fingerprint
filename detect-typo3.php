@@ -36,47 +36,65 @@ class t3detect {
 		foreach ($keys as $key) $tmp[$key] = $footprint[$key];
 		$footprint = $tmp;
 
-		$guess = array();
+		$guessBranch = self::guessBranch($website);
+
+		$guesses = array();
 		foreach ($footprint as $file => $data) {
 			$info = self::getRevisionMd5($website . $file);
 			foreach ($info as $key) {
 				if ($key != -1 && isset($data[$key])) {
 					foreach ($data[$key] as $version) {
-						if (!isset($guess[$version])) {
-							$guess[$version] = 0;
+						if (!isset($guesses[$version])) {
+							$guesses[$version] = 0;
 						}
-						$guess[$version]++;
+						$guesses[$version]++;
 					}
 				}
 			}
 		}
 
-		// Search for the highest branch found
-		// and keep only versions related to the highest branch
-		$tmp = array();
-		$versions = array_keys($guess);
-		if (in_array('master', $versions)) {
-			$tmp['master'] = $guess['master'];
-		} else {
-			$highestBranch = '0.0';
-			foreach ($versions as $version) {
+		$versions = array_keys($guesses);
+		$versionsByBranches = array();
+		foreach ($versions as $version) {
+			if ($version === 'master') {
+				$branch = 'master';
+			} else {
 				$versionParts = explode('.', $version);
 				$branch = $versionParts[0] . '.' . $versionParts[1];
+			}
+			if (isset($versionsByBranches[$branch])) {
+				$versionsByBranches[$branch] = array();
+			}
+			$versionsByBranches[$branch][] = $version;
+		}
+
+		// Either keep only files related to $guessBranch or search
+		// for the highest branch found
+		if ($guessBranch !== NULL && isset($versionsByBranches[$guessBranch])) {
+			$highestBranch = $guessBranch;
+		} elseif (in_array('master', $versions)) {
+			$highestBranch = 'master';
+		} else {
+			$highestBranch = '0.0';
+			$branches = array_keys($versionsByBranches);
+			foreach ($branches as $branch) {
 				if (version_compare($branch, $highestBranch, '>')) {
 					$highestBranch = $branch;
 				}
 			}
-			foreach ($guess as $version => $occurrences) {
-				if (self::isFirstPartOfStr($version, $highestBranch . '.')) {
-					$tmp[$version] = $occurrences;
-				}
-			}
 		}
-		$guess = $tmp;
+
+		// Keep only guesses related to the highest branch
+		$versions = $versionsByBranches[$highestBranch];
+		$tmp = array();
+		foreach ($versions as $version) {
+			$tmp[$version] = $guesses[$version];
+		}
+		$guesses = $tmp;
 
 		// Aggregate version with occurrence
 		$aggregate = array();
-		foreach ($guess as $version => $occurrences) {
+		foreach ($guesses as $version => $occurrences) {
 			if (!isset($aggregate[$occurrences])) {
 				$aggregate[$occurrences] = array();
 			}
@@ -91,6 +109,14 @@ class t3detect {
 		krsort($aggregate);
 		$versions = array_shift($aggregate);
 		return implode(' / ', $versions);
+	}
+
+	public static function guessBranch($website) {
+		$homepage = self::getFile($website);
+		if (preg_match('#<meta name="generator" content="TYPO3 (\\d+\\.\\d+) CMS"#', $homepage, $matches)) {
+			return $matches[1];
+		}
+		return NULL;
 	}
 
 	public static function getChangelogHint($website) {
@@ -211,7 +237,7 @@ if ($website) {
 
 <form method="get">
 	<label for="website">Website:</label>
-	<input type="text" id="website" name="website" size="50" value="<?php echo $website ?>"/><br />
+	<input type="text" id="website" name="website" size="50" value="<?php echo htmlspecialchars($website) ?>"/><br />
 	<label for="ratio">Ratio:</label>
 	<select id="ratio" name="ratio">
 <?php
@@ -229,13 +255,13 @@ if ($website) {
 <?php
 if ($isTYPO3) {
 		if ($version) {
-			echo '<p>Website seems to be running TYPO3 ' . $version . '</p>';
+			echo '<p>Website seems to be running TYPO3 ' . htmlspecialchars($version) . '</p>';
 		} else {
 			echo '<p>Unknown version of TYPO3</p>';
 		}
 		$hint = t3detect::getChangelogHint($website);
 		if ($hint) {
-			echo '<p>ChangeLog highest release: ' . $hint . '</p>';
+			echo '<p>ChangeLog highest release: ' . htmlspecialchars($hint) . '</p>';
 		}
 } else {
 	echo '<p>Website is not running TYPO3</p>';
